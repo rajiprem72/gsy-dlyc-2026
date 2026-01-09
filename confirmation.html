@@ -162,6 +162,42 @@
     // Placeholder payment link (we will replace this dynamically)
     document.getElementById("payBtn").href = "#";
   </script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+
+  const regId = params.get("regId") || "N/A";
+  const district = params.get("district") || "N/A";
+  const events = params.get("events") || "N/A";
+  const eventCount = parseInt(params.get("count") || "0", 10);
+  const amount = eventCount * 500;
+
+  document.getElementById("regId").textContent = regId;
+  document.getElementById("district").textContent = district;
+  document.getElementById("events").textContent = events;
+  document.getElementById("eventCount").textContent = eventCount;
+  document.getElementById("amount").textContent = amount;
+
+  // 🔹 Razorpay Links (TEST AMOUNTS OK)
+  const razorpayLinks = {
+    1: "https://razorpay.me/@globalschoolofyoga?amount=EPec5evqGoRk2C8icWNJlQ%3D%3D",
+    2: "https://razorpay.me/@globalschoolofyoga?amount=tEDHZxxCtz0rKFL9kTzhOw%3D%3D",
+    3: "https://razorpay.me/@globalschoolofyoga?amount=t3S7X%2BkimO%2BolxVgImID0w%3D%3D",
+    4: "https://razorpay.me/@globalschoolofyoga?amount=kQAWFkeY3SRQGBXoGlT%2FBQ%3D%3D",
+    5: "https://razorpay.me/@globalschoolofyoga?amount=zgioswZa9n4qt5x9yD7i%2BQ%3D%3D"
+  };
+
+  const payBtn = document.getElementById("payBtn");
+
+  if (razorpayLinks[eventCount]) {
+    payBtn.href =
+      razorpayLinks[eventCount] +
+      "&reference=" + encodeURIComponent(regId);
+  } else {
+    payBtn.href = "#";
+    payBtn.innerText = "Invalid Event Selection";
+    payBtn.style.background = "gray";
+  }
+</script>
 
 </body>
 </html>
