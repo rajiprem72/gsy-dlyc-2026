@@ -106,39 +106,41 @@
     toRowEl.addEventListener("input", validate);
 
     generateBtn.addEventListener("click", async () => {
-      const district = districtSelect.value.trim();
-      const fromRow = parseInt(fromRowEl.value, 10);
-      const toRow = parseInt(toRowEl.value, 10);
+  const district = districtSelect.value.trim();
+  const fromRow = parseInt(fromRowEl.value, 10);
+  const toRow = parseInt(toRowEl.value, 10);
 
-      try {
-        generateBtn.disabled = true;
-        setStatus("Generating PDFs… Please wait.\n(Do not refresh this page)");
+  try {
+    generateBtn.disabled = true;
+    setStatus("Generating PDFs… Please wait.\n(Do not refresh this page)");
 
-        const res = await fetch(`${API_BASE}?action=generateScorecards`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ district, fromRow, toRow })
-        });
+    const url =
+      `${API_BASE}?action=generateScorecards` +
+      `&district=${encodeURIComponent(district)}` +
+      `&fromRow=${encodeURIComponent(fromRow)}` +
+      `&toRow=${encodeURIComponent(toRow)}` +
+      `&v=${Date.now()}`; // cache buster
 
-        const data = await res.json();
+    const res = await fetch(url, { method: "GET" });
+    const data = await res.json();
 
-        if (!data.ok) throw new Error(data.error || "Generation failed");
+    if (!data.ok) throw new Error(data.error || "Generation failed");
 
-        setStatus(
-          "✅ Done!\n" +
-          `District: ${data.district}\n` +
-          `Rows: ${data.fromRow} to ${data.toRow}\n` +
-          `Scorecards generated: ${data.totalScorecards}\n` +
-          `PDF files created: ${data.pdfCount}\n` +
-          "PDF(s) have been emailed to mail2globalschools@gmail.com."
-        );
+    setStatus(
+      "✅ Done!\n" +
+      `District: ${data.district}\n` +
+      `Rows: ${data.fromRow} to ${data.toRow}\n` +
+      `Scorecards generated: ${data.totalScorecards}\n` +
+      `PDF files created: ${data.pdfCount}\n` +
+      "PDF(s) have been emailed."
+    );
 
-      } catch (err) {
-        setStatus("❌ " + err.message);
-      } finally {
-        validate();
-      }
-    });
+  } catch (err) {
+    setStatus("❌ " + err.message);
+  } finally {
+    validate();
+  }
+});
 
     // init
     loadDistricts().then(validate);
