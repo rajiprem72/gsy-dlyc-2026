@@ -143,41 +143,26 @@
   </div>
 
   <script>
-    // Read URL parameters
-    const params = new URLSearchParams(window.location.search);
-
-    const regId = params.get("regId") || "N/A";
-    const district = params.get("district") || "N/A";
-    const events = params.get("events") || "N/A";
-    const eventCount = parseInt(params.get("count") || "0");
-    const amount = eventCount * 500;
-
-    // Display values
-    document.getElementById("regId").textContent = regId;
-    document.getElementById("district").textContent = district;
-    document.getElementById("events").textContent = events;
-    document.getElementById("eventCount").textContent = eventCount;
-    document.getElementById("amount").textContent = amount;
-
-    // Placeholder payment link (we will replace this dynamically)
-    document.getElementById("payBtn").href = "#";
-  </script>
-<script>
+  // Read URL parameters
   const params = new URLSearchParams(window.location.search);
 
   const regId = params.get("regId") || "N/A";
   const district = params.get("district") || "N/A";
   const events = params.get("events") || "N/A";
   const eventCount = parseInt(params.get("count") || "0", 10);
-  const amount = eventCount * 500;
 
+  // IMPORTANT: Your display amount is based on the event labels (Rs.500),
+  // not the test Razorpay amounts. That's OK.
+  const amountDisplay = eventCount * 500;
+
+  // Display values
   document.getElementById("regId").textContent = regId;
   document.getElementById("district").textContent = district;
   document.getElementById("events").textContent = events;
   document.getElementById("eventCount").textContent = eventCount;
-  document.getElementById("amount").textContent = amount;
+  document.getElementById("amount").textContent = amountDisplay;
 
-  // 🔹 Razorpay Links (TEST AMOUNTS OK)
+  // 🔹 Razorpay links (replace with your TEST links or REAL links)
   const razorpayLinks = {
     1: "https://razorpay.me/@globalschoolofyoga?amount=EPec5evqGoRk2C8icWNJlQ%3D%3D",
     2: "https://razorpay.me/@globalschoolofyoga?amount=tEDHZxxCtz0rKFL9kTzhOw%3D%3D",
@@ -188,14 +173,21 @@
 
   const payBtn = document.getElementById("payBtn");
 
-  if (razorpayLinks[eventCount]) {
-    payBtn.href =
-      razorpayLinks[eventCount] +
-      "&reference=" + encodeURIComponent(regId);
+  // Build payment URL
+  const base = razorpayLinks[eventCount];
+
+  if (base && regId !== "N/A") {
+    // Add a reference so webhook can match payment to registration
+    payBtn.href = base + "&reference=" + encodeURIComponent(regId);
+
+    // Optional: show where it will go (debug)
+    // console.log("Pay URL:", payBtn.href);
+
   } else {
     payBtn.href = "#";
-    payBtn.innerText = "Invalid Event Selection";
+    payBtn.textContent = "Invalid Event Selection";
     payBtn.style.background = "gray";
+    payBtn.style.pointerEvents = "none";
   }
 </script>
 
