@@ -1,0 +1,476 @@
+/**************************************************************
+ * DLYC 2026 – Score Card Generator (Apps Script Web App)
+ *
+ * What it does:
+ * 1) Lists Districts from DLYC-DISTRICT-CONFIG spreadsheet.
+ * 2) Generates Score Cards (1 per event per participant) from a Google Doc template.
+ * 3) Packs score cards 2-per-page into PDFs, max 50 pages per PDF (=> 100 scorecards per PDF).
+ * 4) Emails the generated PDF(s) to mail2globalschools@gmail.com
+ *
+ * IMPORTANT:
+ * - Deploy as Web App:
+ *    Execute as: Me
+ *    Who has access: Anyone
+ * - Then paste your Web App URL into score-card.html (API_BASE).
+ *
+ * CONFIG YOU MUST SET:
+ * - CONFIG_SHEET_ID
+ * - TEMPLATE_DOC_ID
+ * - OUTPUT_FOLDER_ID (optional; if blank it will create in root)
+ **************************************************************/
+
+const CONFIG_SHEET_ID   = "1j2yGZ9bwsCzJSdaaaiKobCHZSFl2QsA1jqHUmFJqe5U";
+const CONFIG_TAB_NAME   = "Districts";
+
+// Your Google Doc template ID (from the URL you shared)
+const TEMPLATE_DOC_ID   = "1cwr5p0CPlps6KTnEFw9cmhQGqX1BRd9tpVXY7TwlQT0";
+
+// Optional: put generated PDFs + temp docs in a folder.
+// Leave as "" to use your Drive root.
+const OUTPUT_FOLDER_ID  = "";
+
+// Email destination for PDFs
+//const DEST_EMAIL        = "mail2globalschools@gmail.com";
+const DEST_EMAIL        = "globalcompetition25@gmail.com";
+
+
+const MAX_SCORECARDS_PER_PDF = 50; // 1 scorecard per page => 50 pages per PDF
+
+// ---- Sheet column indices (1-based in Sheets) ----
+// Based on your header order:
+// A Timestamp
+// B Registration ID
+// C District
+// D Age Group
+// E Events Selected
+// F No of Events
+// G Amount
+// H Name
+// I Father Name
+// J DOB
+// K Age
+// L Sex
+// M Address
+// N Location
+// O Mobile
+// P WhatsApp
+// Q Email
+// R Razorpay Payment ID
+// S Payment Status
+// T Confirmation URL
+const COL_REG_ID   = 2;   // B
+const COL_AGE_CAT  = 4;   // D
+const COL_EVENTS   = 5;   // E
+const COL_NAME     = 8;   // H
+const COL_MOBILE   = 15;  // O
+const COL_EMAIL    = 17;  // Q
+
+/***********************
+ * WEB APP ENDPOINTS
+ ***********************/
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "";
+
+    if (action === "listDistricts") {
+      return json_(listDistricts_());
+    }
+
+    if (action === "generateScorecards") {
+      const district = String(e.parameter.district || "").trim();
+      const fromRow = Number(e.parameter.fromRow);
+      const toRow = Number(e.parameter.toRow);
+
+      if (!district) return json_({ ok: false, error: "District is required" });
+      if (!fromRow || !toRow || fromRow < 2 || toRow < fromRow) {
+        return json_({ ok: false, error: "Invalid row range. FromRow must be >= 2" });
+      }
+
+      const result = generateScorecardsForDistrict_(district, fromRow, toRow);
+      return json_(result);
+    }
+
+    return json_({ ok: false, error: "Unknown action. Use ?action=listDistricts or ?action=generateScorecards" });
+  } catch (err) {
+    return json_({ ok: false, error: err.stack || err.message });
+  }
+}
+
+
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "";
+
+    if (action === "listDistricts") {
+      return json_(listDistricts_());
+    }
+
+    if (action === "generateScorecards") {
+      const district = String(e.parameter.district || "").trim();
+      const fromRow = Number(e.parameter.fromRow);
+      const toRow = Number(e.parameter.toRow);
+
+      if (!district) return json_({ ok: false, error: "District is required" });
+      if (!fromRow || !toRow || fromRow < 2 || toRow < fromRow) {
+        return json_({ ok: false, error: "Invalid row range. FromRow must be >= 2" });
+      }
+
+      const result = generateScorecardsForDistrict_(district, fromRow, toRow);
+      return json_(result);
+    }
+
+    return json_({ ok: false, error: "Unknown action. Use ?action=listDistricts or ?action=generateScorecards" });
+  } catch (err) {
+    return json_({ ok: false, error: err.stack || err.message });
+  }
+}
+
+/***********************
+ * LIST DISTRICTS
+ ***********************/
+function listDistricts_() {
+  const cfg = SpreadsheetApp.openById(CONFIG_SHEET_ID).getSheetByName(CONFIG_TAB_NAME);
+  if (!cfg) return { ok: false, error: `Config tab "${CONFIG_TAB_NAME}" not found` };
+
+  const values = cfg.getDataRange().getValues();
+  // Expect columns: A District Name, B Sheet ID, C Status, D District Code
+  const districts = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const districtName = String(values[i][0] || "").trim();
+    const sheetId      = String(values[i][1] || "").trim();
+    const status       = String(values[i][2] || "").trim().toLowerCase();
+    const districtCode = String(values[i][3] || "").trim();
+
+    if (!districtName || !sheetId) continue;
+    if (status !== "active") continue;
+
+    districts.push({ districtName, sheetId, districtCode });
+  }
+
+  // Sort alphabetically
+  districts.sort((a,b) => a.districtName.localeCompare(b.districtName));
+
+  return { ok: true, districts };
+}
+
+/***********************
+ * GENERATE SCORECARDS
+ ***********************/
+function generateScorecardsForDistrict_(districtName, fromRow, toRow) {
+  const districtMeta = getDistrictMeta_(districtName);
+  if (!districtMeta) {
+    return { ok: false, error: `District not found or inactive: ${districtName}` };
+  }
+
+  // Read district registrations
+  const ss = SpreadsheetApp.openById(districtMeta.sheetId);
+  const regSheet = ss.getSheetByName("Registrations");
+  if (!regSheet) {
+    return { ok: false, error: `Registrations tab not found in sheet: ${districtMeta.sheetId}` };
+  }
+
+  const lastRow = regSheet.getLastRow();
+  if (fromRow > lastRow) {
+    return { ok: false, error: `FromRow (${fromRow}) is beyond last row (${lastRow})` };
+  }
+  const effectiveTo = Math.min(toRow, lastRow);
+
+  const numRows = effectiveTo - fromRow + 1;
+  // Fetch only the columns we need for speed: A..T (20 columns)
+  const data = regSheet.getRange(fromRow, 1, numRows, 20).getValues();
+
+  // Build scorecard items (one per event)
+  const scorecards = [];
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const regId   = String(row[COL_REG_ID - 1] || "").trim();
+    const ageCat  = String(row[COL_AGE_CAT - 1] || "").trim();
+    const events  = row[COL_EVENTS - 1];
+    const name    = String(row[COL_NAME - 1] || "").trim();
+    const mobile  = String(row[COL_MOBILE - 1] || "").trim();
+    const email   = String(row[COL_EMAIL - 1] || "").trim();
+
+    if (!regId || !name) continue;
+
+    const eventList = normalizeEvents_(events); // array of cleaned event names
+
+    // If no events, still create 1 card? We'll skip if empty.
+    if (eventList.length === 0) continue;
+
+    eventList.forEach(ev => {
+      scorecards.push({
+        name,
+        regId,
+        category: ev,
+        ageCat,
+        districtCode: districtMeta.districtCode,
+        mobile,
+        email
+      });
+    });
+  }
+
+  if (scorecards.length === 0) {
+    return { ok: false, error: "No scorecards found in the selected row range." };
+  }
+
+  // Create PDFs in batches of MAX_SCORECARDS_PER_PDF (2 per page => 100 scorecards = 50 pages)
+  const pdfFiles = [];
+  let batchIndex = 0;
+
+  for (let start = 0; start < scorecards.length; start += MAX_SCORECARDS_PER_PDF) {
+    batchIndex++;
+    const batch = scorecards.slice(start, start + MAX_SCORECARDS_PER_PDF);
+    const pdf = buildPdfForBatch_(districtName, fromRow, effectiveTo, batchIndex, batch);
+    pdfFiles.push(pdf);
+  }
+
+  // Email PDFs
+  const subjectBase = `Score Card for the ${districtName} District from Row ${fromRow} to Row ${effectiveTo}`;
+  const body = [
+    `Dear Team,`,
+    ``,
+    `Attached are the score card PDF(s) for:`,
+    `District: ${districtName} (${districtMeta.districtCode})`,
+    `Rows: ${fromRow} to ${effectiveTo}`,
+    `Total scorecards generated: ${scorecards.length}`,
+    `PDF count: ${pdfFiles.length}`,
+    ``,
+    `Regards,`,
+    `DLYC 2026 Automation`
+  ].join("\n");
+
+  GmailApp.sendEmail(
+    DEST_EMAIL,
+    subjectBase,
+    body,
+    { attachments: pdfFiles.map(f => f.getBlob()) }
+  );
+
+  return {
+    ok: true,
+    district: districtName,
+    fromRow,
+    toRow: effectiveTo,
+    totalScorecards: scorecards.length,
+    pdfCount: pdfFiles.length
+  };
+}
+
+/***********************
+ * BUILD A PDF (2 cards per page)
+ * Approach:
+ * - For each scorecard: make a temp doc from template, replace placeholders, copy its body text.
+ * - Create a "2-up" master doc: each page has two "sections" separated by a line and a page break every 2.
+ * - Export master doc to PDF.
+ * - Clean up temp docs.
+ ***********************/
+function buildPdfForBatch_(districtName, fromRow, toRow, batchIndex, scorecardsBatch) {
+  const folder = getOutputFolder_();
+
+  const masterTitle = `DLYC-ScoreCards-${districtName}-R${fromRow}-R${toRow}-Part${batchIndex}`;
+  const masterDoc = DocumentApp.create(masterTitle);
+  const masterId = masterDoc.getId();
+  if (folder) DriveApp.getFileById(masterId).moveTo(folder);
+
+  const body = masterDoc.getBody();
+  body.clear(); // clean start
+
+  for (let i = 0; i < scorecardsBatch.length; i++) {
+    const sc = scorecardsBatch[i];
+
+    // Create filled doc from template
+    const filledDocId = createFilledScoreDoc_(folder, sc);
+    const filledDoc = DocumentApp.openById(filledDocId);
+    const filledBody = filledDoc.getBody();
+
+    // ✅ Put entire scorecard into a single-cell table to reduce page splitting
+    const containerTable = body.appendTable([[""]]);
+    const cell = containerTable.getCell(0, 0);
+    cell.clear();
+
+    // Copy template contents into the cell (paragraphs, tables, list items)
+    copyBodyContentsIntoCell_(filledBody, cell);
+
+    // Add page break AFTER each scorecard (except last)
+    if (i < scorecardsBatch.length - 1) {
+      body.appendPageBreak();
+    }
+
+    // Trash temp doc
+    DriveApp.getFileById(filledDocId).setTrashed(true);
+  }
+
+  masterDoc.saveAndClose();
+
+  // Export master doc to PDF
+  const pdfBlob = DriveApp.getFileById(masterId).getBlob().getAs(MimeType.PDF);
+  const pdfName = `${masterTitle}.pdf`;
+  pdfBlob.setName(pdfName);
+
+  const pdfFile = folder ? folder.createFile(pdfBlob) : DriveApp.createFile(pdfBlob);
+
+  // Trash master doc (keep only PDF)
+  DriveApp.getFileById(masterId).setTrashed(true);
+
+  return pdfFile;
+}
+
+/***********************
+ * Create a temp doc from template and replace placeholders
+ ***********************/
+function createFilledScoreDoc_(folder, sc) {
+  const templateFile = DriveApp.getFileById(TEMPLATE_DOC_ID);
+  const copyName = `TEMP-ScoreCard-${sc.regId}-${sc.category}`;
+  const copyFile = templateFile.makeCopy(copyName, folder || DriveApp.getRootFolder());
+  const docId = copyFile.getId();
+
+  const doc = DocumentApp.openById(docId);
+  const body = doc.getBody();
+
+  // Replace placeholders
+  body.replaceText("\\{\\{NAME1\\}\\}", sc.name);
+  body.replaceText("\\{\\{REG1\\}\\}", sc.regId);
+  body.replaceText("\\{\\{CATEGORY1\\}\\}", sc.category);
+  body.replaceText("\\{\\{AGE1\\}\\}", sc.ageCat);
+  body.replaceText("\\{\\{DISTRICT1\\}\\}", sc.districtCode);
+  body.replaceText("\\{\\{MOBILE1\\}\\}", sc.mobile);
+  body.replaceText("\\{\\{EMAIL1\\}\\}", sc.email);
+
+  doc.saveAndClose();
+  return docId;
+}
+
+/***********************
+ * Helper: Copy body content from source to target
+ * Copies paragraphs and tables in order.
+ ***********************/
+function copyBodyContents_(sourceBody, targetBody) {
+  const numChildren = sourceBody.getNumChildren();
+  for (let i = 0; i < numChildren; i++) {
+    const child = sourceBody.getChild(i);
+    const type = child.getType();
+
+    if (type === DocumentApp.ElementType.PARAGRAPH) {
+      const p = child.asParagraph();
+      targetBody.appendParagraph(p.copy());
+    } else if (type === DocumentApp.ElementType.TABLE) {
+      const t = child.asTable();
+      targetBody.appendTable(t.copy());
+    } else if (type === DocumentApp.ElementType.LIST_ITEM) {
+      const li = child.asListItem();
+      targetBody.appendListItem(li.copy());
+    } else {
+      // For other elements, attempt to append as paragraph text
+      try {
+        targetBody.appendParagraph(child.asText().getText());
+      } catch (e) {
+        // ignore unknown types
+      }
+    }
+  }
+}
+
+/***********************
+ * Extract and normalize event list
+ * Input could be:
+ * - Array from Sheets (if stored as array)
+ * - String like "Traditional – Rs.500, Forward – Rs.500"
+ * Output: ["Traditional", "Forward", ...]
+ ***********************/
+function normalizeEvents_(eventsCell) {
+  let raw = eventsCell;
+
+  // If it came as array
+  if (Array.isArray(raw)) {
+    raw = raw.join(", ");
+  } else {
+    raw = String(raw || "");
+  }
+
+  raw = raw.trim();
+  if (!raw) return [];
+
+  // Split by commas
+  const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+
+  // Remove "– Rs.500" and any trailing amount
+  return parts.map(p => {
+    // Handle different dash characters and spacing
+    // Examples: "Forward – Rs.500", "Forward - Rs.500"
+    return p
+      .replace(/\s*[–-]\s*Rs\.?\s*\d+\s*/i, "")
+      .replace(/\s*Rs\.?\s*\d+\s*/i, "")
+      .trim();
+  }).filter(Boolean);
+}
+
+/***********************
+ * Get district meta from config
+ ***********************/
+function getDistrictMeta_(districtName) {
+  const cfg = SpreadsheetApp.openById(CONFIG_SHEET_ID).getSheetByName(CONFIG_TAB_NAME);
+  const values = cfg.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    const dn = String(values[i][0] || "").trim();
+    const sheetId = String(values[i][1] || "").trim();
+    const status = String(values[i][2] || "").trim().toLowerCase();
+    const districtCode = String(values[i][3] || "").trim();
+
+    if (dn === districtName && status === "active") {
+      return { districtName: dn, sheetId, districtCode };
+    }
+  }
+  return null;
+}
+
+/***********************
+ * Output folder helper
+ ***********************/
+function getOutputFolder_() {
+  if (!OUTPUT_FOLDER_ID) return null;
+  try {
+    return DriveApp.getFolderById(OUTPUT_FOLDER_ID);
+  } catch (e) {
+    return null;
+  }
+}
+
+/***********************
+ * JSON Response helper with CORS
+ ***********************/
+function json_(obj) {
+  const output = ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+
+  // CORS headers for GitHub Pages fetch()
+  // (Apps Script ContentService doesn't support setting headers directly,
+  // but this still works for many use cases; if blocked, we can switch to
+  // HtmlService + JSON output.)
+  return output;
+}
+
+function copyBodyContentsIntoCell_(sourceBody, targetCell) {
+  const numChildren = sourceBody.getNumChildren();
+
+  for (let i = 0; i < numChildren; i++) {
+    const child = sourceBody.getChild(i);
+    const type = child.getType();
+
+    if (type === DocumentApp.ElementType.PARAGRAPH) {
+      targetCell.appendParagraph(child.asParagraph().copy());
+    } else if (type === DocumentApp.ElementType.TABLE) {
+      targetCell.appendTable(child.asTable().copy());
+    } else if (type === DocumentApp.ElementType.LIST_ITEM) {
+      targetCell.appendListItem(child.asListItem().copy());
+    } else {
+      try {
+        targetCell.appendParagraph(child.asText().getText());
+      } catch (e) {}
+    }
+  }
+}
+
