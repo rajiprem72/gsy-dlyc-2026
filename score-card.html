@@ -124,20 +124,66 @@
     const res = await fetch(url, { method: "GET" });
     const data = await res.json();
 
-    if (!data.ok) throw new Error(data.error || "Generation failed");
+    if (!data.ok) {
+  const e = new Error(data.error || "Generation failed");
+  e.pendingList = data.pendingList || [];
+  throw e;
+  }
 
-    setStatus(
-      "✅ Done!\n" +
-      `District: ${data.district}\n` +
-      `Rows: ${data.fromRow} to ${data.toRow}\n` +
-      `Scorecards generated: ${data.totalScorecards}\n` +
-      `PDF files created: ${data.pdfCount}\n` +
-      "PDF(s) have been emailed."
-    );
 
-  } catch (err) {
-    setStatus("❌ " + err.message);
-  } finally {
+   let msg =
+  "✅ Done!\n" +
+  `District: ${data.district}\n` +
+  `Rows: ${data.fromRow} to ${data.toRow}\n` +
+  `Scorecards generated (PAID only): ${data.totalScorecards}\n` +
+  `PDF files created: ${data.pdfCount}\n` +
+  "PDF(s) have been emailed.\n";
+
+if (data.pendingList && data.pendingList.length) {
+  msg += "\n⚠️ PENDING / NOT-PAID Participants (No PDF generated):\n";
+  msg += data.pendingList.map(p => {
+    return [
+      `Registration ID: ${p.regId}`,
+      `District: ${p.district}`,
+      `Age Group: ${p.ageCat}`,
+      `Events Selected: ${p.eventsSelected}`,
+      `No of Events: ${p.noOfEvents}`,
+      `Name: ${p.name}`,
+      `Father Name: ${p.fatherName}`,
+      `Mobile: ${p.mobile}`,
+      `WhatsApp: ${p.whatsapp}`,
+      `Email: ${p.email}`
+    ].join("\n");
+  }).join("\n--------------------------\n");
+}
+
+setStatus(msg);
+
+} catch (err) {
+  if (err && err.pendingList && err.pendingList.length) {
+    let msg = "❌ " + (err.message || "Generation failed") + "\n\n";
+    msg += "⚠️ PENDING / NOT-PAID Participants:\n";
+    msg += err.pendingList.map(p => {
+      return [
+        `Registration ID: ${p.regId}`,
+        `District: ${p.district}`,
+        `Age Group: ${p.ageCat}`,
+        `Events Selected: ${p.eventsSelected}`,
+        `No of Events: ${p.noOfEvents}`,
+        `Name: ${p.name}`,
+        `Father Name: ${p.fatherName}`,
+        `Mobile: ${p.mobile}`,
+        `WhatsApp: ${p.whatsapp}`,
+        `Email: ${p.email}`
+      ].join("\n");
+    }).join("\n--------------------------\n");
+    setStatus(msg);
+  } else {
+    setStatus("❌ " + (err && err.message ? err.message : String(err)));
+  }
+}
+
+   finally {
     validate();
   }
 });
