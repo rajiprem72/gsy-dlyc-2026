@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DLYC 2026 – Event Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .box { max-width: 900px; margin: auto; }
+    select, button { padding: 10px; font-size: 16px; }
+    button { cursor: pointer; margin-left: 8px; }
+    .row { margin: 12px 0; }
+    .ok { color: green; }
+    .warn { color: #b36b00; }
+    .err { color: red; }
+    pre { background:#f6f6f6; padding:10px; overflow:auto; }
+    h3 { margin-top: 28px; }
+    ul { line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>DLYC 2026 – Event Reminder Sender</h2>
+
+  <div class="row">
+    <label><b>Select District:</b></label><br/>
+    <select id="districtSelect"></select>
+    <button id="sendBtn">Send Reminder</button>
+  </div>
+
+  <div class="row" id="districtInfo"></div>
+
+  <h3>✅ Sent to PAID Participants</h3>
+  <div id="sentList"></div>
+
+  <h3>⚠️ Not Paid Yet (Call & Follow-up)</h3>
+  <div id="unpaidList"></div>
+
+  <h3>Debug</h3>
+  <pre id="debug"></pre>
+</div>
+
+<script>
+  // ✅ Put your deployed Apps Script Web App URL here
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyr2RTeo3UeUSybIm9y-rg8YXZcQUeR8ytWnRPHI1Zp0sruwh3M5Gv2tNmCPMMRroc7/exec";
+
+  const districtSelect = document.getElementById("districtSelect");
+  const sendBtn = document.getElementById("sendBtn");
+  const debug = document.getElementById("debug");
+  const districtInfo = document.getElementById("districtInfo");
+  const sentList = document.getElementById("sentList");
+  const unpaidList = document.getElementById("unpaidList");
+
+  function setDebug(obj) {
+    debug.textContent = JSON.stringify(obj, null, 2);
+  }
+
+  async function loadDistricts() {
+    const url = `${SCRIPT_URL}?action=listDistricts`;
+    const res = await fetch(url);
+    const json = await res.json();
+    setDebug(json);
+
+    if (!json.ok) {
+      districtSelect.innerHTML = `<option>Error loading districts</option>`;
+      return;
+    }
+
+    districtSelect.innerHTML = json.districts.map(d => 
+      `<option value="${d.districtName}">${d.districtName}</option>`
+    ).join("");
+  }
+
+  function renderDistrictInfo(d) {
+    districtInfo.innerHTML = `
+      <div><b>District Code:</b> ${d.districtCode || "-"}</div>
+      <div><b>Event Date:</b> ${d.eventDate || "-"}</div>
+      <div><b>Event Location:</b> ${d.eventLocation || "-"}</div>
+      <div><b>Contact Number:</b> ${d.contactNumber || "-"}</div>
+    `;
+  }
+
+  function renderSent(sent) {
+    if (!sent || sent.length === 0) {
+      sentList.innerHTML = `<div class="warn">No PAID participants found.</div>`;
+      return;
+    }
+    sentList.innerHTML = `
+      <ul>
+        ${sent.map(x => `<li>
+          <b>${x.name}</b> | WA: ${x.whatsapp || "-"} | Email: ${x.email || "-"}
+          <br/><span class="ok">Email:</span> ${x.emailStatus} |
+          <span class="ok">WA:</span> ${x.waStatus}
+        </li>`).join("")}
+      </ul>
+    `;
+  }
+
+  function renderUnpaid(unpaid) {
+    if (!unpaid || unpaid.length === 0) {
+      unpaidList.innerHTML = `<div class="ok">All participants are PAID ✅</div>`;
+      return;
+    }
+    unpaidList.innerHTML = `
+      <ul>
+        ${unpaid.map(x => `<li>
+          <b>${x.name}</b>, Age Group: ${x.ageGroup}, Events: ${x.eventsSelected}, No: ${x.noOfEvents}
+          <br/>Mobile: ${x.mobile || "-"} | WA: ${x.whatsapp || "-"} | Email: ${x.email || "-"}
+        </li>`).join("")}
+      </ul>
+    `;
+  }
+
+  sendBtn.addEventListener("click", async () => {
+    const district = districtSelect.value;
+    sentList.innerHTML = "";
+    unpaidList.innerHTML = "";
+    districtInfo.innerHTML = "";
+    debug.textContent = "Sending...";
+
+    const url = `${SCRIPT_URL}?action=sendReminders&district=${encodeURIComponent(district)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    setDebug(json);
+
+    if (!json.ok) {
+      sentList.innerHTML = `<div class="err">${json.error || "Error"}</div>`;
+      return;
+    }
+
+    renderDistrictInfo(json.district);
+    renderSent(json.sent);
+    renderUnpaid(json.unpaid);
+  });
+
+  loadDistricts();
+</script>
+</body>
+</html>
