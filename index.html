@@ -92,7 +92,16 @@
   </div>
 </div>
 </div>
+<script>
+function openEventImage(src) {
+  document.getElementById("eventOverlayImg").src = src;
+  document.getElementById("eventOverlay").style.display = "flex";
+}
 
+function closeEventImage() {
+  document.getElementById("eventOverlay").style.display = "none";
+}
+</script>
   
 <!--  
 <p style="margin-top:40px;">
