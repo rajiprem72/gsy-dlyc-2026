@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DLYC 2026 – District Level Yogāsana Competitions</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #2c5f2d; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #e8f5e9; }
+    .btn{
+    margin-top: 30px;
+    padding: 12px 20px;
+    font-size: 20px;   /* or 18px */
+    }
+
+/* center the button */
+    a.btn-wrap{
+      display: block;
+      text-align: center;
+      margin-top: 30px;  /* move margin here (optional) */
+      }
+   
+  </style>
+
+  
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<h1>DISTRICT LEVEL YOGĀSANA COMPETITIONS – 2026</h1>
+<p><strong>Organized by:</strong> Global School of Yoga</p>
+
+<h2>📅 District-wise Event Schedule</h2>
+
+<table>
+  <tr>
+    <th>District(s)</th>
+    <th class="nowrap">Day, Date &amp; Time</th>
+    <th>Venue</th>
+    <th>Contact Number</th>
+  </tr>
+  <tr><td>Tiruvannamalai, Villupuram</td><td>Sun, 01 Feb 2026 <br> 10am - 5pm</td><td>St. Joseph's Boys Hr Sec School & St. Joseph's Orphanage, Susai Nagar, Tiruvannamalai</td><td>97904 03118</td></tr>
+  <tr><td>Chennai</td><td>Sun, 08 Feb 2026 <br> 10am - 5pm</td><td>Decathlon - Nolambur, Chennai</td><td>96000 75267, 88702 76934, 73389 26122</td></tr>
+  <tr><td>Ranipet</td><td>Sun, 08 Feb 2026 <br> 10am - 5pm</td><td>STAYOUNG Sports Academy & Unisex Gym A/c, Ranipet</td><td>99447 18297</td></tr>
+  <tr><td>Thirupattur</td><td>Sun, 08 Feb 2026 <br> 10am - 5pm</td><td>To be announced</td><td>To be announced</td></tr>
+  <tr><td>Kanchipuram, Vellore</td><td>Sun, 08 Feb 2026 <br> 10am - 5pm</td><td>Sri Lakshmi Global School, Kanchipuram</td><td>98946 93430, 70107 98108, 98412 87661</td></tr>
+  <tr><td>Coimbatore, Erode</td><td>Sun, 08 Feb 2026 <br> 10am - 5pm</td><td>To be announced</td><td>To be announced</td></tr>
+  <tr><td>Trichy</td><td>Sun, 15 Feb 2026 <br> 10am - 5pm</td><td>To be announced</td><td>To be announced</td></tr>
+  <tr><td>Tiruvallur</td><td> <br> Sun, 22 Feb 2026 <br> 10am - 5pm</td><td>Decathlon - Nolambur, Chennai</td><td>99622 84644, 97915 61784, 63850 47142</td></tr>
+  <tr><td>Perambalur, Karur</td><td>Sun, 22 Feb 2026 <br> 10am - 5pm</td><td>To be announced</td><td>To be announced</td></tr>
+  <tr><td>Madurai, Dindigul, Theni</td><td>Sun, 22 Feb 2026 <br> 10am - 5pm</td><td>Decathlon Sports - Madurai</td><td>96554 82851, 90471 44075, 98659 05706</td></tr>
+</table>
+
+<a class="btn-wrap" href="https://docs.google.com/forms/d/e/1FAIpQLSc-JfX-RgZ-M194dtEet10376VamFvJvZRdSchgmIGFfVKraw/viewform">
+  <button class="btn">🧘 Register Now</button>
+</a>
+
+<div class="sakara-box">  
+<div class="events-section-title">Event Details - District Wise (Slide left to right)</div>
+
+<div class="ypv">
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/chennai.jpg')">
+    <img src="event-banner/chennai.jpg">
+    <div class="event-title">Chennai</div>
+  </div>
+
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/thiruvallur.jpg')">
+    <img src="event-banner/thiruvallur.jpg">
+    <div class="event-title">Thiruvallur</div>
+  </div>
+
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/kanchipuram-vellore.jpg')">
+    <img src="event-banner/kanchipuram-vellore.jpg">
+    <div class="event-title">Kanchipuram-Vellore</div>
+  </div>
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/tiruvannamalai-villupuram.jpg')">
+    <img src="event-banner/tiruvannamalai-villupuram.jpg">
+    <div class="event-title">Tiruvannamalai-Villupuram</div>
+  </div>
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/ranipet.jpg')">
+    <img src="event-banner/ranipet.jpg">
+    <div class="event-title">Ranipet</div>
+  </div>
+
+  <div class="ypv-card" onclick="openEventImage('event-banner/madurai-dindugul-theni.jpg')">
+    <img src="event-banner/madurai-dindugul-theni.jpg">
+    <div class="event-title">Madurai-Dindugul-Theni</div>
+  </div>
+</div>
+</div>
+
+  <div id="eventOverlay" onclick="closeEventImage()"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.8);
+            align-items:center; justify-content:center; z-index:9999;">
+  <img id="eventOverlayImg" src=""
+       style="max-width:90%; max-height:90%; border-radius:12px;">
+  </div>
+
+ 
+  
+<script>
+function openEventImage(src) {
+  document.getElementById("eventOverlayImg").src = src;
+  document.getElementById("eventOverlay").style.display = "flex";
+}
+
+function closeEventImage() {
+  document.getElementById("eventOverlay").style.display = "none";
+}
+</script>  
+<!--  
+<p style="margin-top:40px;">
+  📧 Contact: globalschoolofyoga@gmail.com
+</p>
+-->
+</body>
+</html>
