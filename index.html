@@ -21,7 +21,57 @@
       text-align: center;
       margin-top: 30px;  /* move margin here (optional) */
       }
-   
+     .syllabus-section{
+    max-width: 1100px;
+    margin: 28px auto;
+    padding: 18px;
+  }
+  .section-title{
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .section-subtitle{
+    margin: 0 0 16px;
+    opacity: 0.85;
+    font-size: 14px;
+  }
+  .syllabus-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .syllabus-card{
+    display: block;
+    text-decoration: none;
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 12px;
+    padding: 14px 14px;
+    background: #fff;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .syllabus-card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+    border-color: rgba(0,0,0,0.2);
+  }
+  .syllabus-name{
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #111;
+  }
+  .syllabus-action{
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.15);
+    color: #111;
+    background: rgba(0,0,0,0.03);
+  }
+
   </style>
 
   
@@ -103,7 +153,47 @@
        style="max-width:90%; max-height:90%; border-radius:12px;">
   </div>
 
- 
+ <!-- =========================
+     SYLLABUS / ASANAS LIST
+========================= -->
+<section id="syllabus" class="syllabus-section">
+  <h2 class="section-title">Syllabus – Asanas List (PDF)</h2>
+  <p class="section-subtitle">Download the official asanas lists for each event category.</p>
+
+  <div class="syllabus-grid">
+    <a class="syllabus-card" href="https://dlyc.globalschoolofyoga.com/syllabus/Asanas%20List%20for%20Traditional%20Event.pdf"
+       download target="_blank" rel="noopener">
+      <div class="syllabus-name">Traditional Asanas List</div>
+      <div class="syllabus-action">Download PDF</div>
+    </a>
+
+    <a class="syllabus-card" href="https://dlyc.globalschoolofyoga.com/syllabus/Handbalance%20asanas%20list.pdf"
+       download target="_blank" rel="noopener">
+      <div class="syllabus-name">Handbalance Asanas List</div>
+      <div class="syllabus-action">Download PDF</div>
+    </a>
+
+    <a class="syllabus-card" href="https://dlyc.globalschoolofyoga.com/syllabus/Twisting%20Asanas.pdf"
+       download target="_blank" rel="noopener">
+      <div class="syllabus-name">Twisting Asanas List</div>
+      <div class="syllabus-action">Download PDF</div>
+    </a>
+
+    <a class="syllabus-card" href="https://dlyc.globalschoolofyoga.com/syllabus/backbend%20asanas.pdf"
+       download target="_blank" rel="noopener">
+      <div class="syllabus-name">Backbend Asanas List</div>
+      <div class="syllabus-action">Download PDF</div>
+    </a>
+
+    <a class="syllabus-card" href="https://dlyc.globalschoolofyoga.com/syllabus/forward%20bend%20asanas.pdf"
+       download target="_blank" rel="noopener">
+      <div class="syllabus-name">Forward Bend Asanas List</div>
+      <div class="syllabus-action">Download PDF</div>
+    </a>
+  </div>
+</section>
+
+
   
 <script>
 function openEventImage(src) {
