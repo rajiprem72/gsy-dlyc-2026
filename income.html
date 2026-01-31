@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>District Level Yoga Competition – Income Report</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f7f7f7;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+        }
+
+        tfoot td {
+            font-weight: bold;
+            background: #ecf0f1;
+        }
+
+        .summary {
+            margin-top: 30px;
+            padding: 15px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>District Level Yoga Competition<br>Income Report</h1>
+
+<div class="loading" id="loading">Loading report…</div>
+
+<table id="reportTable" style="display:none;">
+    <thead>
+        <tr>
+            <th>S.No</th>
+            <th>District</th>
+            <th>Participants</th>
+            <th>Events Participated</th>
+            <th>Amount Received (₹)</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div class="summary" id="summary" style="display:none;">
+    <h3>Special Mention</h3>
+    <p>Total Participants: <span id="totalParticipants">0</span></p>
+    <p>Total Events Participated: <span id="totalEvents">0</span></p>
+    <p>Total Income from the Event: ₹ <span id="totalIncome">0</span></p>
+</div>
+
+<script>
+const CONFIG_SHEET_ID = "1j2yGZ9bwsCzJSdaaaiKobCHZSFl2QsA1jqHUmFJqe5U";
+const CONFIG_SHEET_NAME = "DLYC-DISTRICT-CONFIG";
+
+let totalParticipants = 0;
+let totalEvents = 0;
+let totalIncome = 0;
+let serialNo = 1;
+
+function fetchSheet(sheetId, sheetName, callback) {
+    const url =
+        "https://docs.google.com/spreadsheets/d/" +
+        sheetId +
+        "/gviz/tq?sheet=" +
+        encodeURIComponent(sheetName);
+
+    fetch(url)
+        .then(res => res.text())
+        .then(text => {
+            const json = JSON.parse(text.substring(47).slice(0, -2));
+            callback(json.table.rows);
+        });
+}
+
+function processDistrictSheet(districtName, sheetId) {
+    fetchSheet(sheetId, "", rows => {
+        if (!rows || rows.length <= 1) return;
+
+        const participantCount = rows.length - 1;
+        let eventCount = 0;
+        let amountSum = 0;
+
+        rows.slice(1).forEach(r => {
+            const events = Number(r.c[5]?.v || 0);   // Column F
+            const amount = Number(r.c[6]?.v || 0);   // Column G
+
+            eventCount += events;
+            amountSum += amount;
+        });
+
+        totalParticipants += participantCount;
+        totalEvents += eventCount;
+        totalIncome += amountSum;
+
+        const tbody = document.querySelector("#reportTable tbody");
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${serialNo++}</td>
+            <td>${districtName}</td>
+            <td>${participantCount}</td>
+            <td>${eventCount}</td>
+            <td>${amountSum.toLocaleString("en-IN")}</td>
+        `;
+
+        tbody.appendChild(tr);
+
+        updateSummary();
+    });
+}
+
+function updateSummary() {
+    document.getElementById("totalParticipants").innerText = totalParticipants;
+    document.getElementById("totalEvents").innerText = totalEvents;
+    document.getElementById("totalIncome").innerText =
+        totalIncome.toLocaleString("en-IN");
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("reportTable").style.display = "";
+    document.getElementById("summary").style.display = "";
+}
+
+// Fetch district configuration
+fetchSheet(CONFIG_SHEET_ID, CONFIG_SHEET_NAME, rows => {
+    rows.slice(1).forEach(r => {
+        const districtName = r.c[0]?.v; // Column A
+        const sheetId = r.c[1]?.v;      // Column B
+        const status = r.c[2]?.v;       // Column C
+
+        if (status === "Active" && districtName && sheetId) {
+            processDistrictSheet(districtName, sheetId);
+        }
+    });
+});
+</script>
+
+</body>
+</html>
