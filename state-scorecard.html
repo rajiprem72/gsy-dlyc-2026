@@ -73,7 +73,7 @@
         setStatus("Loading States…");
         stateSelect.innerHTML = `<option value="">Loading States…</option>`;
 
-        const res = await fetch(`${API_BASE}?action=liststates`, { method: "GET" });
+        const res = await fetch(`${API_BASE}?action=listStates`, { method: "GET" });
         const data = await res.json();
 
         if (!data.ok) throw new Error(data.error || "Failed to load States");
